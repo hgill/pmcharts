@@ -16,11 +16,9 @@
 }(this,realAction));
 
 
-function realAction(d3,_){
-  return viewFinder;
-}
 
-function viewFinder(placeholder, dimensions, layers) {
+
+function viewfinder(placeholder, dimensions, layers) {
 	if (_.isEmpty(placeholder)) throw Error("L0 Input error: Placeholder needed");
 
 	//VERIFY LAYERS
@@ -230,4 +228,9 @@ function viewFinder(placeholder, dimensions, layers) {
 	}
 
 
+}
+
+
+function realAction(d3,_){
+  return viewfinder;
 }
