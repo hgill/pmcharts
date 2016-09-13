@@ -60,19 +60,11 @@ function realAction(d3,_){
 			let oldData=d3.select(this).datum();
 			let delta = d3.mouse(this.parentNode)[0]-initLoc[0]+xScale.range()[0],
 				moveX = Math.floor(xScale.invert(delta)),
-				newRng = [d.domain[0] + moveX, d.domain[1] + moveX];
-        
-				newRng = Util.rangeFix({
-					start: newRng[0],
-					end: newRng[1]
-				}, {
-					start: xScale.domain()[0],
-					end: xScale.domain()[1]
-				});
-			
-			let newData=Object.assign({},oldData,{domain:[newRng.start,newRng.end]});
-     
-      d3.select(this).datum(newData).call(partialReRender);
+				newRng = [Math.max(d.domain[0] + moveX,xScale.domain()[0]),
+                			 Math.min(d.domain[1] + moveX,xScale.domain()[1])];
+
+          		let newData=Object.assign({},oldData,{domain:newRng});
+      		d3.select(this).datum(newData).call(partialReRender);
 })
 		.on('dragend', function(d) {
 			d3.select(this).select("path").attr({
@@ -89,8 +81,7 @@ function realAction(d3,_){
 		.on('drag', function(d,i) {
 			let oldData=_.cloneDeep(d3.select(this.parentNode).datum());
 			let delta = d3.mouse(zoomer.node())[0]-initLoc[0]+xScale.range()[0],
-				moveX = Math.floor(xScale.invert(delta)),
-      	moveX2=(moveX===0?0:(moveX>0?1:-1));
+				moveX = Math.floor(xScale.invert(delta));
       
       if(!_.isEqual(moveX,0)){
           oldData.domain[i]=d+moveX;
