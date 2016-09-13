@@ -60,8 +60,8 @@ function realAction(d3,_){
 			let oldData=d3.select(this).datum();
 			let delta = d3.mouse(this.parentNode)[0]-initLoc[0]+xScale.range()[0],
 				moveX = Math.floor(xScale.invert(delta)),
-				newRng = [Math.max(d.domain[0] + moveX,xScale.domain()[0]),
-                			 Math.min(d.domain[1] + moveX,xScale.domain()[1])];
+				newRng = rangeFix([d.domain[0]+moveX,d.domain[1]+moveX],
+						xScale.domain());
 
           		let newData=Object.assign({},oldData,{domain:newRng});
       		d3.select(this).datum(newData).call(partialReRender);
@@ -219,3 +219,30 @@ function realAction(d3,_){
 
 };
 }
+
+function rangeFix(rng, range){
+	let start,end,rstart,rend;
+	if(_.isArray(rng) && _.isArray(range))
+		start=rng[0],end=rng[1], rstart=range[0],rend=range[1];
+	else if(_.isObject(rng) && _.isObject(range))
+		start=rng.start,end=rng.end,rstart=range.start,rend=range.end;
+    let retval,
+      len = end - start;
+    if (len > rend-rstart) len = rend-rstart;
+
+    if (start<rstart) {
+      start = rstart, end = start+len;
+    }
+
+    if (end >= rend) {
+      end = rend, start = end - len;
+    }
+	
+	if(_.isArray(rng))
+		return [start,end];
+	else if(_.isObject(rng))
+		return {
+		      start: start,
+		      end: end
+		    };
+  }
