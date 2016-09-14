@@ -16,7 +16,7 @@
 }(this,realAction));
 
 function realAction(d3,_){
-  return function viewfinder(placeholder, dimensions, layers) {
+  return function viewfinder(placeholder, dimensions, layers, getfn) {
 	if (_.isEmpty(placeholder)) throw Error("L0 Input error: Placeholder needed");
 
 	//VERIFY LAYERS
@@ -70,7 +70,9 @@ function realAction(d3,_){
 			d3.select(this).select("path").attr({
 				"stroke-width": 1
 			});
+			console.log("drag",d3.select(this).datum(),d);
 			initLoc = null;
+			getfn(d3.select(this).datum());
       		});
 
 	let drag2 = d3.behavior.drag()
@@ -97,7 +99,10 @@ function realAction(d3,_){
       }
         
 		})
-		.on('dragend', function() {});
+		.on('dragend', function() {
+				console.log("drag2",d3.select(this.parentNode).datum(),d);
+			getfn(d3.select(this.parentNode).datum());
+		});
 		fullRender(layers);
 
 	function fullRender(LAYERS) {
