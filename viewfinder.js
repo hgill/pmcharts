@@ -107,7 +107,8 @@ function realAction(d3,_){
 	function fullRender(LAYERS) {
 		//At this point obj should be selection of GS with new Data updated
 		let gs = zoomer.selectAll("g").data(LAYERS,d=>d.name)
-
+		console.log("update,exit,enter",gs,gs.exit(),gs.enter());
+		
 		gs.exit().remove();
 
 		gs.transition().attr({
