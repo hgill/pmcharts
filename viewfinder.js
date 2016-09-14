@@ -70,7 +70,6 @@ function realAction(d3,_){
 			d3.select(this).select("path").attr({
 				"stroke-width": 1
 			});
-			console.log("drag",d3.select(this).datum(),d);
 			initLoc = null;
 			getfn(d3.select(this).datum());
       		});
@@ -100,7 +99,7 @@ function realAction(d3,_){
         
 		})
 		.on('dragend', function() {
-				console.log("drag2",d3.select(this.parentNode).datum(),d);
+			initLoc = null;
 			getfn(d3.select(this.parentNode).datum());
 		});
 		fullRender(layers);
