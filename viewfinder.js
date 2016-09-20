@@ -16,7 +16,7 @@
 }(this,realAction));
 
 function realAction(d3,_){
-  return function viewfinder(placeholder, dimensions, layers, getfn) {
+  return function viewfinder(placeholder, dimensions, layers,getfn) {
 	if (_.isEmpty(placeholder)) throw Error("L0 Input error: Placeholder needed");
 
 	//VERIFY LAYERS
@@ -45,8 +45,6 @@ function realAction(d3,_){
 			dimensions.margin.top
 		]);
 
-
-
 	let initLoc = null;
 	var drag = d3.behavior.drag()
 		//.origin(Object)
@@ -56,12 +54,11 @@ function realAction(d3,_){
 			});
 			initLoc = d3.mouse(this.parentNode);
 })
-		.on('drag', function(d,i,a) {
+		.on('drag', function(d,i) {
 			let oldData=d3.select(this).datum();
 			let delta = d3.mouse(this.parentNode)[0]-initLoc[0]+xScale.range()[0],
-				moveX = Math.floor(xScale.invert(delta)),
-				newRng = rangeFix([d.domain[0]+moveX,d.domain[1]+moveX],
-						xScale.domain());
+				moveX = Math.floor(xScale.invert(delta)-xScale.domain()[0]),
+				newRng = [d.domain[0]+moveX,d.domain[1]+moveX];
 
           		let newData=Object.assign({},oldData,{domain:newRng});
       		d3.select(this).datum(newData).call(partialReRender);
@@ -71,8 +68,8 @@ function realAction(d3,_){
 				"stroke-width": 1
 			});
 			initLoc = null;
-			getfn(d3.select(this).datum());
-      		});
+			getfn(d3.select(this).datum())
+      	});
 
 	let drag2 = d3.behavior.drag()
 		.on('dragstart', function(d) {
@@ -82,15 +79,14 @@ function realAction(d3,_){
 		.on('drag', function(d,i) {
 			let oldData=_.cloneDeep(d3.select(this.parentNode).datum());
 			let delta = d3.mouse(zoomer.node())[0]-initLoc[0]+xScale.range()[0],
-				moveX = Math.floor(xScale.invert(delta));
+				moveX = Math.floor(xScale.invert(delta)-xScale.domain()[0]);
       
       if(!_.isEqual(moveX,0)){
           oldData.domain[i]=d+moveX;
           if(oldData.domain[0]>oldData.domain[1])
             oldData.domain=[oldData.domain[1],oldData.domain[0]];
 
-          let newRng = [Math.max(oldData.domain[0],xScale.domain()[0]),
-                        Math.min(oldData.domain[1],xScale.domain()[1])];
+          let newRng = oldData.domain;
 
           let newData=Object.assign({},oldData,{domain:newRng});
           d3.select(this.parentNode).datum(newData).call(partialReRender)
@@ -99,24 +95,21 @@ function realAction(d3,_){
         
 		})
 		.on('dragend', function() {
-			initLoc = null;
-			getfn(d3.select(this.parentNode).datum());
+			getfn(d3.select(this.parentNode).datum())
 		});
-		fullRender(layers);
+		let gs = zoomer
+				.selectAll("g")
+				.data(layers,d=>d.name);
+		gs.call(fullRender);		
 
-	function fullRender(LAYERS) {
-		//At this point obj should be selection of GS with new Data updated
-		let gs = zoomer.selectAll("g").data(LAYERS,d=>d.name)
-		console.log("update,exit,enter",gs,gs.exit(),gs.enter());
+	function fullRender() {
+
+		this.exit().remove();
 		
-		gs.exit().remove();
-
-		gs.transition().attr({
+		this.transition().attr({
 			transform: d => `translate(${xScale(d.domain[0])},0)`
-		}).select("path").transition().attr({
+		}).select("path").attr({
 			"d": pathfn,
-			stroke: (d, i) => c10(i),
-			fill: "none"
 		}).each(function(d) {
 			d3.select(this.parentNode)
 				.selectAll("text")
@@ -126,15 +119,26 @@ function realAction(d3,_){
 					}
 				})
 				.text(d => d);
+			d3.select(this.parentNode)
+					.selectAll("rect")
+					.data(d.domain)
+					.attr({
+						x: (d1, i) => {
+							return i === 0 ? 0 : (xScale(d1) - xScale(d.domain[0]) - 8)
+						},
+						fill: (d, i) => c10(7)
+					})
+					.call(drag2);
 		});
 
-		gs.call(drag);
+		this.call(drag);
+		
 
-
-		let entered = gs.enter().append("g").attr({
+		let entered = this.enter().append("g").attr({
 			transform: d => `translate(${xScale(d.domain[0])},0)`
-		})
+		});
 
+		let LAYERS=this.data();
 		entered.append("path")
 			.attr({
 				"d": pathfn,
@@ -157,8 +161,6 @@ function realAction(d3,_){
 					})
 					.text(d1 => d1);
 
-
-
 				d3.select(this.parentNode)
 					.selectAll("rect")
 					.data(d.domain).enter().append("rect")
@@ -169,7 +171,7 @@ function realAction(d3,_){
 						y: yScale(d.name),
 						width: 8,
 						height: yScale(LAYERS[0].name) - yScale(d.name),
-						fill: c10(5),
+						fill: (d, i) => c10(7),
 						opacity: 0.5,
 						cursor: "col-resize"
 					})
@@ -184,7 +186,7 @@ function realAction(d3,_){
     
     this.attr({
       	transform: `translate(${xScale(data.domain[0])},0)`
-      });
+      }).call(drag);
       
     this.select("path").attr({
 				"d": pathfn,
@@ -209,10 +211,10 @@ function realAction(d3,_){
 						y: yScale(data.name),
 						width: 8,
 						height: yScale(layers[0].name) - yScale(data.name),
-						fill: c10(5),
+						fill: (d, i) => c10(5),
 						opacity: 0.5,
 						cursor: "col-resize"
-					})
+					}).call(drag2)
   }
 
 	function pathfn(d) {
@@ -225,29 +227,3 @@ function realAction(d3,_){
 };
 }
 
-function rangeFix(rng, range){
-	let start,end,rstart,rend;
-	if(_.isArray(rng) && _.isArray(range))
-		start=rng[0],end=rng[1], rstart=range[0],rend=range[1];
-	else if(_.isObject(rng) && _.isObject(range))
-		start=rng.start,end=rng.end,rstart=range.start,rend=range.end;
-    let retval,
-      len = end - start;
-    if (len > rend-rstart) len = rend-rstart;
-
-    if (start<rstart) {
-      start = rstart, end = start+len;
-    }
-
-    if (end >= rend) {
-      end = rend, start = end - len;
-    }
-	
-	if(_.isArray(rng))
-		return [start,end];
-	else if(_.isObject(rng))
-		return {
-		      start: start,
-		      end: end
-		    };
-  }
