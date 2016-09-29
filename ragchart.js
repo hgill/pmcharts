@@ -311,9 +311,9 @@ function realAction(_,d3,moment){
 						.reduce(greensf, 0);
 					let iwidth = xScale(isoP(d.endTime)) - xScale(isoP(d.startTime));
 
-					rrag.call(this, "ambers", iwidth, 0, yScaleAG(ambers), 0, 0, 0, COLORS.amber) //amber
+					rrag.call(this, "ambers", iwidth, 0, yScaleAG(ambers), 0, 0, 0, COLORS.amber,"cubicIn") //amber
 						.each("end", () => {
-							rrag.call(this, "greens", iwidth, 0, yScaleAG(greens), 0, 0, yScaleAG(ambers), COLORS.green) //green
+							rrag.call(this, "greens", iwidth, 0, yScaleAG(greens), 0, yScaleAG(ambers), yScaleAG(ambers), COLORS.green,"cubicOut") //green
 								.each("end", () => {
 									rrag.call(this, "reds", iwidth, 0, yScaleR(reds), 0, 0, -yScaleR(reds), COLORS.red) //red
 										.each("end", () => {
@@ -333,14 +333,14 @@ function realAction(_,d3,moment){
 												});
 
 											textlabel.call(gt.node(), "greens", iwidth / 2,
-												yScaleAG(greens + ambers) - 15,
+												yScaleAG(greens/2 + ambers),
 												greens);
 
 											textlabel.call(gt.node(), "ambers", iwidth / 2,
-												yScaleAG(ambers) - 15,
+												yScaleAG(ambers/2),
 												ambers);
 
-											textlabel.call(gt.node(), "reds", iwidth / 2, -(yScaleR(reds) - 15),
+											textlabel.call(gt.node(), "reds", iwidth / 2, -(yScaleR(reds/2)),
 												reds);
 										})
 								})
@@ -367,11 +367,12 @@ function realAction(_,d3,moment){
 		}
 
 		//RENDERER functions
-		function rrag(classed, width, height1, height2, x, y1, y2, fill) {
+		function rrag(classed, width, height1, height2, x, y1, y2, fill,ease) {
 
 			if (d3.select(this).select('rect.' + classed).node()) {
 				return d3.select(this).select('rect.' + classed)
-					.transition().attr({
+					.transition()
+					.attr({
 						height: height2,
 						y: y2,
 						width: width,
@@ -386,7 +387,9 @@ function realAction(_,d3,moment){
 						y: y1,
 						opacity: 1,
 						class: classed
-					}).transition().duration(100)
+					}).transition()
+					.ease(ease || "cubic")
+					.duration(100)
 					.attr({
 						y: y2,
 						height: height2
