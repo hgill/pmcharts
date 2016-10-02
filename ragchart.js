@@ -23,13 +23,17 @@ function realAction(_,d3,moment){
 		//Shared Stuff : Colours, Dimensions,Scales, Axes
 		let placeholder=this.placeholder(),
 			dimensions=this.dimensions(),
-			outData=this.data(),
-			redsc=this.redAccessor(),
-			ambersc=this.amberAccessor(),
-			greensc=this.greenAccessor(),
+			data=this.data(),
+			redTotalAccessor=this.redTotalAccessor(),
+			amberTotalAccessor=this.amberTotalAccessor(),
+			greenTotalAccessor=this.greenTotalAccessor(),
 			COLORS=this.colors(),
 			ragClickHandler=this.ragClickHandler(),
-			uniqueAccessor=this.uniqueAccessor();
+			uniqueAccessor=this.uniqueAccessor(),
+			search=this.search(),
+			searchAccessor=this.searchAccessor(),
+			startTimeAccessor=this.startTimeAccessor(),
+			endTimeAccessor=this.endTimeAccessor();
 
 	let ph = d3.select(placeholder);
 
@@ -80,20 +84,21 @@ function realAction(_,d3,moment){
 		let isoP = d3.time.format.iso.parse;
 		let HMf = d3.time.format("%H:%M");
 		let YMDf = d3.time.format("%d.%m.%Y");
-
+		let extent=d3.extent(_(data).map(d => {
+				return [startTimeAccessor(d),endTimeAccessor(d)]
+			}).flatten().value());
+		console.log(extent);
 		let xScale = d3.time.scale()
-			.domain(d3.extent(_.flatten(outData.map(d => {
-				return [isoP(d.startTime), isoP(d.endTime)]
-			})))) /* Extract Data manipulations */
+			.domain([isoP(extent[0]),isoP(extent[1])]) /* Extract Data manipulations */
 			.range([margin.left, width - margin.right]).clamp(true);
 
 		let yScale = d3.scale.linear().range([margin.top, height - margin.bottom]);
 
 		let yScaleAG = d3.scale
 			.linear()
-			.domain([0, outData.reduce((max, d) => {
-				let calc = d.processInfo.reduce(ambersf, 0) +
-					d.processInfo.reduce(greensf, 0);
+			.domain([0, data.reduce((max, d) => {
+				let calc = amberTotalAccessor(d) +
+					greenTotalAccessor(d);
 
 				return max > calc ? max : calc;
 			}, 0)]) /* Extract Data manipulations */
@@ -101,8 +106,8 @@ function realAction(_,d3,moment){
 
 		let yScaleR = d3.scale
 			.linear()
-			.domain([0, outData.reduce((max, d) => {
-				let calc = d.processInfo.reduce(redsf, 0);
+			.domain([0, data.reduce((max, d) => {
+				let calc = redTotalAccessor(d);
 				return max > calc ? max : calc;
 			}, 0)])/* Extract Data manipulations */
 			.range([0, translate - margin.top]);
@@ -119,24 +124,12 @@ function realAction(_,d3,moment){
 			})
 			.call(xAxis.tickValues(xScale.domain()))
 			.each("end", () => {
-				theRealAction(outData);
+				theRealAction(data);
 				plotAxis2(xScale);
 				//Move axes to front
 				ragchart.node().appendChild(xAxis1.node());
 				ragchart.node().appendChild(xAxis2.node());
 			})
-
-		function ambersf(total, d2) {
-			return ambersc(d2) ? total + 1 : total;
-		}
-
-		function redsf(total, d2) {
-			return redsc(d2) ? total + 1 : total;
-		}
-
-		function greensf(total, d2) {
-			return greensc(d2) ? total + 1 : total;
-		}
 
 		function plotAxis2(tScale) {//outer: xAxis2
 
@@ -182,7 +175,8 @@ function realAction(_,d3,moment){
 					let endx = tScale(moment(d2).endOf('day'))
 					return (startx + endx) / 2;
 				}
-			}).text(d2 => YMDf(new Date(d2)));
+			})
+			//.text(d2 => YMDf(new Date(d2)));
 
 			gs.select('path').datum(d2 => {
 				var x = tScale(moment(d2).startOf('day'));
@@ -252,17 +246,17 @@ function realAction(_,d3,moment){
 				}).remove();
 
 			//update
-			gs.transition().attr({
+			let trans=gs.transition().attr({
 				transform: (d) => {
-					let x = xScale(isoP(d.startTime));
+					let x = xScale(isoP(startTimeAccessor(d)));
 					return `translate(${x},${translate})`;
 				}
 			}).each(function(d) {
 
-				let ambers = d.processInfo.reduce(ambersf, 0);
-				let reds = d.processInfo.reduce(redsf, 0);
-				let greens = d.processInfo.reduce(greensf, 0);
-				let iwidth = xScale(isoP(d.endTime)) - xScale(isoP(d.startTime));
+				let ambers = amberTotalAccessor(d);
+				let reds = redTotalAccessor(d);
+				let greens = greenTotalAccessor(d);
+				let iwidth = xScale(isoP(endTimeAccessor(d))) - xScale(isoP(startTimeAccessor(d)));
 
 				rrag.call(this, "ambers", iwidth, 0, yScaleAG(ambers), 0, 0, 0, COLORS.amber) //amber
 				rrag.call(this, "greens", iwidth, 0, yScaleAG(greens), 0, 0, yScaleAG(ambers), COLORS.green) //green
@@ -280,17 +274,24 @@ function realAction(_,d3,moment){
 					});
 
 				textlabel.call(gt.node(), "greens", iwidth / 2,
-					yScaleAG(greens + ambers) - 15,
+					yScaleAG(greens/2 + ambers),
 					greens);
 
 				textlabel.call(gt.node(), "ambers", iwidth / 2,
-					yScaleAG(ambers) - 15,
+					yScaleAG(ambers/2),
 					ambers);
 
-				textlabel.call(gt.node(), "reds", iwidth / 2, -(yScaleR(reds) - 15),
+				textlabel.call(gt.node(), "reds", iwidth / 2, -(yScaleR(reds/2)),
 					reds);
-			})
 
+
+			})
+			trans.each("end",()=>{
+				if(search && searchAccessor){
+	            	gs.filter(searchAccessor(search))
+	              	.selectAll("rect").attr({opacity:0.5});
+				}
+			})
 
 			//enter
 			gs.enter().append('g')
@@ -298,18 +299,15 @@ function realAction(_,d3,moment){
 					class: "data",
 					fill: "#888888",
 					transform: (d) => {
-						let x = xScale(isoP(d.startTime));
+						let x = xScale(isoP(startTimeAccessor(d)));
 						return `translate(${x},${translate})`
 					}
 				}).each(function(d) {
 
-					let ambers = d.processInfo
-						.reduce(ambersf, 0);
-					let reds = d.processInfo
-						.reduce(redsf, 0);
-					let greens = d.processInfo
-						.reduce(greensf, 0);
-					let iwidth = xScale(isoP(d.endTime)) - xScale(isoP(d.startTime));
+					let ambers = amberTotalAccessor(d);
+					let reds = redTotalAccessor(d);
+					let greens = greenTotalAccessor(d);
+					let iwidth = xScale(isoP(endTimeAccessor(d))) - xScale(isoP(startTimeAccessor(d)));
 
 					rrag.call(this, "ambers", iwidth, 0, yScaleAG(ambers), 0, 0, 0, COLORS.amber,"cubicIn") //amber
 						.each("end", () => {
@@ -319,8 +317,8 @@ function realAction(_,d3,moment){
 										.each("end", () => {
 
 											let rectred = d3.select(this).select(Selectors.redrect);
-											rectred.on('mouseover', showToolTip);
-											rectred.on('mouseout', hideToolTip);
+											//rectred.on('mouseover', showToolTip);
+											//rectred.on('mouseout', hideToolTip);
 
 											let gt = null;
 											if (d3.select(this).select(Selectors.ginfo).node()) {
@@ -342,6 +340,8 @@ function realAction(_,d3,moment){
 
 											textlabel.call(gt.node(), "reds", iwidth / 2, -(yScaleR(reds/2)),
 												reds);
+
+
 										})
 								})
 						})
@@ -354,7 +354,7 @@ function realAction(_,d3,moment){
 					d3.select(this)
 						.selectAll("g#info")
 						.classed("hide", false);
-					plotChangedAxis([isoP(d.startTime), isoP(d.endTime)]);
+					plotChangedAxis([isoP(startTimeAccessor(d)), isoP(endTimeAccessor(d))]);
 				})
 				.on("mouseout", function(d) {
 					d3.select(this)
@@ -376,7 +376,8 @@ function realAction(_,d3,moment){
 						height: height2,
 						y: y2,
 						width: width,
-						x: x
+						x: x,
+						opacity:1
 					});
 			} else {
 				return d3.select(this).append('rect').attr({
@@ -398,21 +399,23 @@ function realAction(_,d3,moment){
 		}
 
 		function textlabel(classed, x, y, text) {
-
-			if (d3.select(this).select('text.' + classed).node()) {
+			if (d3.select(this).select('text.' + classed).size()>0) {
 				d3.select(this).select('text.' + classed)
 					.attr({
 						x: x,
-						y: y
+						y: y,						
 					})
-					.text(text)
 			} else {
 				d3.select(this).append('text')
 					.attr({
 						x: x,
 						y: y,
-						class: "mouseoverText " + classed
+						stroke:"white",
+						"text-anchor":"middle",
+						"font-size":10,
+						"alignment-baseline":"middle"
 					})
+					.classed(classed,true)
 					.text(text)
 			}
 		}
@@ -427,127 +430,7 @@ function realAction(_,d3,moment){
 				.call(xAxis.tickValues(tarr.sort()));
 		}
 
-		function showToolTip(d) {//outer: ragchart,xScale,yScale
-			let box = d3.select(this.parentNode).node().getBBox();
-			let coords = d3.transform(d3.select(this.parentNode).attr("transform")).translate;
-			box.x = coords[0];
 
-			let iwidth = 30 / 100 * width,
-				iheight = 30 / 100 * height;
-
-			let newbox = {
-				width: iwidth,
-				height: iheight,
-				y: coords[1] + 20, //padding for triangle
-				x: box.x + box.width / 2 - iwidth / 2
-			}
-
-			if (newbox.x < margin.left)
-				newbox.x = margin.left;
-			else if (newbox.x + newbox.width > width - margin.right)
-				newbox.x = width - margin.right - newbox.width;
-
-			let ing = ragchart.append("g").attr({
-				id: "tooltip"
-			})
-
-
-			ing.append("path").attr({
-				d: () => {
-					return `M ${box.x+box.width/2} ${translate} l 10 22 l -20 0 Z`
-				}
-			}).style({
-				stroke: "black",
-				"stroke-width": "1px",
-				fill: "white",
-				opacity: 1,
-			})
-
-			let svg = ing.append("svg")
-				.attr(newbox);
-
-			svg.append('rect').attr({
-				opacity: 1,
-				width: "100%",
-				height: "100%",
-				rx: 7,
-				ry: 7
-			}).style({
-				"stroke-width": "1px",
-				stroke: "black",
-				fill: "white"
-			})
-
-			let errorList = _.toPairs(_.countBy(_.filter(d.processInfo, redsc), (d2) => {
-				return d2.errors
-			})); // this has to be optimized - get errorList filter, after getting REDS objects, how to get error values
-
-			errorList = _.orderBy(errorList, d => d[1], 'desc');
-
-			var padding = {
-				inner: 10,
-				leftright: 10,
-				topbottom: 10
-			};
-
-			let yScale = d3.scale.linear()
-				.domain([0, 4])
-				.range([padding.topbottom, newbox.height - padding.topbottom]);
-
-			if (errorList.length >= yScale.domain()[1] + 1)
-				svg.transition().attr({
-					height: d => {
-						return yScale(errorList.length)
-					}
-				})
-			let xScale = d3.scale.linear()
-				.domain([0, _.max(errorList.map(d => d[1]))])
-				.range([padding.leftright, newbox.width - padding.leftright]);
-
-			let gs = svg.selectAll('g').data(errorList, d => d).enter().append('g')
-				.attr({
-					transform: (d, i) => {
-						return `translate(${xScale(0)},${yScale(i)})`
-					}
-				});
-
-			gs.append('rect').attr({
-					height: (d) => {
-						return 2
-					},
-					width: 0,
-					opacity: 0.6,
-					fill: COLORS.red
-				})
-				.transition()
-				.attr({
-					width: d => (xScale(d[1]) - xScale(0))
-				});
-
-			gs.append('text').attr({
-					x: xScale(0),
-					"text-anchor": "end",
-					y: 8
-				}).style({
-					"alignment-baseline": "middle"
-				})
-				.attr({
-					x: d => (xScale(d[1]) - xScale(0) - padding.inner)
-				}).text(d => `x${d[1]}`)
-
-			gs.append('text').attr({
-					x: padding.inner,
-					y: 10
-				})
-				.style({
-					"alignment-baseline": "middle"
-				}).text(d => d[0]);
-
-		}
-
-		function hideToolTip(d) {
-			ragchart.selectAll(Selectors.tooltip).remove();
-		}
 
 
 
@@ -585,25 +468,25 @@ function realAction(_,d3,moment){
             }else return this.__current__;
         }
 
-        this.redAccessor=function(){
+        this.redTotalAccessor=function(){
            if(arguments.length){
-              let redAccessor=arguments[0];
-              this.__redAccessor__=redAccessor; 
+              let redTotalAccessor=arguments[0];
+              this.__redTotalAccessor__=redTotalAccessor; 
               return this;
-            }else return this.__redAccessor__;
+            }else return this.__redTotalAccessor__;
         }
 
-        this.amberAccessor=function(){
+        this.amberTotalAccessor=function(){
            if(arguments.length){
-              let amberAccessor=arguments[0];
-              this.__amberAccessor__=amberAccessor; 
+              let amberTotalAccessor=arguments[0];
+              this.__amberTotalAccessor__=amberTotalAccessor; 
               return this;
-            }else return this.__amberAccessor__;
+            }else return this.__amberTotalAccessor__;
         }
-        this.greenAccessor=function(){
+        this.greenTotalAccessor=function(){
            if(arguments.length){
-              let greenAccessor=arguments[0];
-              this.__greenAccessor__=greenAccessor; 
+              let greenTotalAccessor=arguments[0];
+              this.__greenAccessor__=greenTotalAccessor; 
               return this;
             }else return this.__greenAccessor__;
         }
@@ -628,7 +511,34 @@ function realAction(_,d3,moment){
               return this;
             }else return this.__uniqueAccessor__ || JSON.stringify;
         }
-
+        this.search=function(){
+           if(arguments.length){
+              let search=arguments[0];
+              this.__search__=search;               
+              return this;
+            }else return this.__search__;
+        }
+        this.startTimeAccessor=function(){
+           if(arguments.length){
+              let startTimeAccessor=arguments[0];
+              this.__startTimeAccessor__=startTimeAccessor;               
+              return this;
+            }else return this.__startTimeAccessor__;
+        }
+        this.endTimeAccessor=function(){
+           if(arguments.length){
+              let endTimeAccessor=arguments[0];
+              this.__endTimeAccessor__=endTimeAccessor;               
+              return this;
+            }else return this.__endTimeAccessor__;
+        }        
+        this.searchAccessor=function(){
+           if(arguments.length){
+              let searchAccessor=arguments[0];
+              this.__searchAccessor__=searchAccessor; 
+              return this;
+            }else return this.__searchAccessor__;
+        }
 
         return this;
     }

@@ -17,7 +17,7 @@
 function realAction(d3,_){
 
 	    return function(){
-
+	    	let self=this;
         this.render=function(){
 
         	let placeholder=this.placeholder(),
@@ -119,7 +119,7 @@ function realAction(d3,_){
 			transform: d => `translate(${xScale(d.domain[0])},0)`
 		}).select("path").attr({
 			"d": pathfn,
-		}).each(function(d) {
+		}).each(function(d,i) {
 			d3.select(this.parentNode)
 				.selectAll("text")
 				.data(d.domain).transition().attr({
@@ -127,7 +127,11 @@ function realAction(d3,_){
 						return i = 0 ? 0 : xScale(d1) - xScale(d.domain[0])
 					}
 				})
-				.text(d => d);
+				.text((d1,i2) => {
+						if(i===0)
+						return i2===0?(d1>0?`0-${d1}`:0):(d1<self.maxDataSize()-1?`${d1}-${self.maxDataSize()}`:self.maxDataSize())
+						else return d1;
+					});
 			d3.select(this.parentNode)
 					.selectAll("rect")
 					.data(d.domain)
@@ -168,7 +172,11 @@ function realAction(d3,_){
 						"text-anchor": "middle",
 						"alignment-baseline": "hanging"
 					})
-					.text(d1 => d1);
+					.text((d1,i2) => {
+						if(i===0)
+						return i2===0?(d1>0?`0-${d1}`:0):(d1<self.maxDataSize()-1?`${d1}-${self.maxDataSize()}`:self.maxDataSize())
+						else return d1;
+					});
 
 				d3.select(this.parentNode)
 					.selectAll("rect")
@@ -265,6 +273,13 @@ function realAction(d3,_){
               this.__getfn__=getfn; 
               return this;
             }else return this.__getfn__;
+        }
+        this.maxDataSize=function(){
+           if(arguments.length){
+              let maxDataSize=arguments[0];
+              this.__maxDataSize__=maxDataSize; 
+              return this;
+            }else return this.__maxDataSize__;
         }
         this.uniqueAccessor=function(){
             if(arguments.length){

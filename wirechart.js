@@ -28,7 +28,8 @@ function realAction(d3){
 			COLORS=this.colors(),
 			wireClickHandler=this.wireClickHandler(),
 			uniqueAccessor=this.uniqueAccessor(),
-			current=this.current();
+			current=this.current(),
+			timeAccessor=this.timeAccessor();
 		const Selectors={
 			gdata: "g.data"
 		};
@@ -55,11 +56,11 @@ function realAction(d3){
 		//wirechart.selectAll(Selectors.gdata).remove();
 
 		let isoP = d3.time.format.iso.parse;
-		let xScale = d3.time.scale()
-			.domain([isoP(data2.startTime), isoP(data2.endTime)])
-			.range([margin.left, width - margin.right]);
+		let extent=d3.extent(_(data2).map(timeAccessor).flatten().value());
 
-		let db = data2.database;
+		let xScale = d3.time.scale()
+			.domain([isoP(extent[0]),isoP(extent[1])])
+			.range([margin.left, width - margin.right]);
 
 		var lineFunction = d3.svg.line()
 			.x(function(d, i) {
@@ -79,7 +80,7 @@ function realAction(d3){
 		
 
 		let gs = wirechart.selectAll(Selectors.gdata)
-			.data(data2.processInfo,uniqueAccessor);
+			.data(data2,uniqueAccessor);
 
 
 		xAxis1.transition().duration(150).attr({
@@ -98,7 +99,7 @@ function realAction(d3){
 
 			entered.append("path")
 				.attr({
-					"d": d => lineFunction(d.times.sort()),
+					"d": d => lineFunction(timeAccessor(d).sort()),
 					"stroke-width": 2,
 					stroke: d => getRAG(d),
 					fill: "none"
@@ -110,13 +111,13 @@ function realAction(d3){
 				})
 				.transition()
 				.duration((d) => {
-					return 150 / 5 * d.times.length
+					return 150 / 5 * timeAccessor(d).length
 				})
 				//        .ease("linear")
 				.attr("stroke-dashoffset", 0);;
 
 			entered.selectAll('circle').data(d => {
-				return d.times
+				return timeAccessor(d)
 			}).enter().append('circle').attr({
 				r: 5,
 				cx: (d) => xScale(isoP(d)),
@@ -204,6 +205,14 @@ function realAction(d3){
               this.__data__=data; 
               return this;
             }else return this.__data__;
+        }
+        
+        this.timeAccessor=function(){
+            if(arguments.length){
+              let timeAccessor=arguments[0];
+              this.__timeAccessor__=timeAccessor; 
+              return this;
+            }else return this.__timeAccessor__;
         }
 
         this.placeholder=function(){

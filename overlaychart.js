@@ -77,8 +77,8 @@ function realAction(_,d3){
             .transition()
             .attr("stroke-dashoffset", 0);
           
-          if(this.search() && this.searchAccessor()){
-                        gs.filter(this.searchAccessor()(this.search()))
+          if(search && searchAccessor){
+                        gs.filter(searchAccessor(search))
                           .select("path").attr({stroke:"red"});
           }
     }

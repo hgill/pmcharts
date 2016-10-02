@@ -16,18 +16,19 @@
 
 function realAction(_,d3){
     return function(){
-
+        let self=this;
         this.render=function(){
             let placeholder=this.placeholder(),
                 data=this.data(),
                 current=this.current(),
                 dimensions=this.dimensions(),
                 uniqueAccessor=this.uniqueAccessor(),
-                textClickHandler=this.textClickHandler();
+                textClickHandler=this.textClickHandler(),
+                bgColor=this.bgColor();
             
             let ph = d3.select(placeholder);
         
-        if(_.isArray(data) && _.every(data,_.isObject)){
+        if(_.isArray(data) && _.every(data,d=>{return !_.isEmpty(d);})){
                 let textchart=null;
         
                 let {width,height,margin}=dimensions;
@@ -39,6 +40,7 @@ function realAction(_,d3){
                         .style({"opacity":0.7})
                         .transition()
                         .style({"opacity":1})
+                        .style({"background-color":bgColor})
                     }
                 } else {
                     textchart = ph.append("pre").attr({
@@ -46,16 +48,15 @@ function realAction(_,d3){
                     }).style({
                         width: width+"px",
                         height: height+"px",
+                        margin:0,
                         padding: `${margin.top}px ${margin.right}px ${margin.bottom}px ${margin.left}px`,
                         "overflow-y": "auto",
-                        "background-color": "steelblue",
+                        "background-color": bgColor,
                         "opacity":1
                     });
                 }
                 
                 textchart.datum(data);
-
-                let before=textchart.selectAll("div").data();
 
                 let divs=textchart.selectAll("div").data(data,uniqueAccessor);
                 divs.exit().remove();
@@ -65,13 +66,12 @@ function realAction(_,d3){
                 .text(d=>{return JSON.stringify(d,null,' ')});
 
                 divs.style("display","block");
-                let after=textchart.selectAll("div").data();
                
                 divs.style({
                     "color":function(d){
-                        let color="#A9A9A9";
+                        let color=self.tColor();
                         if(_.isEqual(d,current)){
-                                color="white";
+                                color=self.tColorCurrent();
                                 let scrollheight=this.offsetTop-this.parentNode.offsetTop-75;
                                 t1.each("end",()=>{
                                      textchart.transition().duration(150)
@@ -93,7 +93,7 @@ function realAction(_,d3){
                 } 
         
         }else{
-            throw Error("textchart takes Array of Objects")
+            throw Error("textchart takes Array of non-null items")
         }
         }
 
@@ -127,6 +127,30 @@ function realAction(_,d3){
               this.__current__=current; 
               return this;
             }else return this.__current__;
+        }
+
+        this.bgColor=function(){
+           if(arguments.length){
+              let bgColor=arguments[0];
+              this.__bgColor__=bgColor; 
+              return this;
+            }else return this.__bgColor__ || "steelblue";
+        }
+
+        this.tColor=function(){
+           if(arguments.length){
+              let tColor=arguments[0];
+              this.__tColor__=tColor; 
+              return this;
+            }else return this.__tColor__ || "#A9A9A9";
+        }
+
+        this.tColorCurrent=function(){
+           if(arguments.length){
+              let tColorCurrent=arguments[0];
+              this.__tColorCurrent__=tColorCurrent; 
+              return this;
+            }else return this.__tColorCurrent__ || "white";
         }
 
         this.textClickHandler=function(){
