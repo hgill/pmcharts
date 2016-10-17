@@ -123,15 +123,15 @@ function realAction(d3,_){
 			d3.select(this.parentNode)
 				.selectAll("text")
 				.data(d.domain).transition().attr({
-					x: (d1, i) => {
-						return i = 0 ? 0 : xScale(d1) - xScale(d.domain[0])
+					x: (d2, i2) => {
+						return i2 === 0 ? 0 : xScale(d2) - xScale(d.domain[0])
 					}
 				})
-				.text((d1,i2) => {
-						if(i===0)
-						return i2===0?(d1>0?`0-${d1}`:0):(d1<self.maxDataSize()-1?`${d1}-${self.maxDataSize()}`:self.maxDataSize())
-						else return d1;
-					});
+				.attr({
+					"text-anchor":"middle"
+				})
+				.text(d2=>d2);
+			
 			d3.select(this.parentNode)
 					.selectAll("rect")
 					.data(d.domain)

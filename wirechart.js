@@ -141,7 +141,6 @@ function realAction(d3){
 			
 			addGSListeners();
 			gs.filter(d=>{
-				_.isEqual(d,current)?console.log("wirechart Current",d,current,_.isEqual(d,current)):0;
 				return _.isEqual(d,current);
 			}).each(function(d){
 				wirechart.node().appendChild(this);

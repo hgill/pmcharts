@@ -87,7 +87,7 @@ function realAction(_,d3,moment){
 		let extent=d3.extent(_(data).map(d => {
 				return [startTimeAccessor(d),endTimeAccessor(d)]
 			}).flatten().value());
-		console.log(extent);
+
 		let xScale = d3.time.scale()
 			.domain([isoP(extent[0]),isoP(extent[1])]) /* Extract Data manipulations */
 			.range([margin.left, width - margin.right]).clamp(true);

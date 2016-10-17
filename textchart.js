@@ -40,7 +40,7 @@ function realAction(_,d3){
                         .style({"opacity":0.7})
                         .transition()
                         .style({"opacity":1})
-                        .style({"background-color":bgColor})
+                        .style({"background":bgColor})
                     }
                 } else {
                     textchart = ph.append("pre").attr({
@@ -63,7 +63,11 @@ function realAction(_,d3){
 
                 divs.enter()
                 .append("div")
-                .text(d=>{return JSON.stringify(d,null,' ')});
+                .text(d=>{
+                  if(_.isString(d))
+                    return d;
+                  else return JSON.stringify(d,null,' ')
+                });
 
                 divs.style("display","block");
                
